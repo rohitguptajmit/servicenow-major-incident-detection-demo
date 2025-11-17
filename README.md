@@ -1,13 +1,13 @@
 # ServiceNow Incident & Major Incident Detection System – n8n Workflow
 
 This repository contains an end-to-end automated **Incident Management & Major Incident Detection System**, implemented using **n8n**.  
-It replicates how the automation will eventually integrate with **ServiceNow** by temporarily using a **Google Sheets spreadsheet (SERVICE NOW.xls)** because ServiceNow API keys are not currently available.
+It replicates how the automation will eventually integrate with **ServiceNow** by temporarily using a **Google Sheets spreadsheet (SERVICE NOW.xlsx)** because ServiceNow API keys are not currently available.
 
 ---
 
 ## 📄 Included Reference File – SERVICE NOW.xls
 
-The repository includes a reference spreadsheet named **SERVICE NOW.xls**, which contains two tabs:
+The repository includes a reference spreadsheet named **SERVICE NOW.xlsx**, which contains two tabs:
 
 ### 1️⃣ Incidents (Sheet)
 Simulates the ServiceNow **incident** table.
