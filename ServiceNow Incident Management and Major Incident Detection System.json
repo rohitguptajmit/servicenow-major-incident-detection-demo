@@ -1,0 +1,935 @@
+{
+  "name": "ServiceNow Incident Management and Major Incident Detection System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incident",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2426f2b3-35b0-47fe-8a0b-a2a0123c6ed6",
+      "name": "Receive Incident",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -4976,
+        400
+      ],
+      "webhookId": "d6d4e673-c437-409f-bb90-0be61dd8160b"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "sheetId",
+              "value": "1ae8xVOhnb4obrk--GBQiLmJs9VPJP2j4re_uvjBBJl4",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "incidentsRange",
+              "value": "Incidents!A:I",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "majorIncidentsRange",
+              "value": "MajorIncidents!A:F",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "threshold",
+              "value": 3,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "09e11d6e-d9f6-456d-85b4-ae101915bad2",
+      "name": "Workflow Configuration",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4816,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Workflow Configuration').first().json.sheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Incidents"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A:I"
+            }
+          },
+          "returnFirstMatch": false
+        }
+      },
+      "id": "007a0650-cfc0-4655-96b8-d65d24aa7a28",
+      "name": "Get All Incidents",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -4656,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uA0gluDjiComYe9i",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const incidents = $input.all();\nconst webhookData = $('Receive Incident').first().json.body;\n\n// Find max incident number\nlet maxNum = 10000;\nfor (const incident of incidents) {\n  if (incident.json.number && incident.json.number.startsWith('INC')) {\n    const num = parseInt(incident.json.number.replace('INC', ''));\n    if (num > maxNum) {\n      maxNum = num;\n    }\n  }\n}\n\nconst newIncidentNumber = `INC${String(maxNum + 1).padStart(7, '0')}`;\n\nreturn [{\n  json: {\n    ...webhookData,\n    incidentNumber: newIncidentNumber,\n    allIncidents: incidents.map(i => i.json)\n  }\n}];"
+      },
+      "id": "e80c1fc6-7740-4705-9795-6239b6c70c2b",
+      "name": "Generate Incident Number",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4512,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "number",
+              "value": "={{ $json.incidentNumber }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "server_name",
+              "value": "={{ $json.server_name }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "assignment_group",
+              "value": "={{ $json.assignment_group }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "short_desc",
+              "value": "={{ $json.short_desc }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "state",
+              "value": "={{ $json.state || 'New' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-6",
+              "name": "created_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "id-7",
+              "name": "is_major_child",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "id-8",
+              "name": "parent_mi_number",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "id-9",
+              "name": "notes",
+              "value": "Created via n8n workflow",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "7178f81d-21b5-430f-8b1b-67a487091f41",
+      "name": "Prepare New Incident",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4336,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Workflow Configuration').first().json.sheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Incidents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "number": "={{ $json.number }}",
+            "server_name": "={{ $json.server_name }}",
+            "assignment_group": "={{ $json.assignment_group }}",
+            "short_desc": "={{ $json.short_desc }}",
+            "state": "={{ $json.state }}",
+            "created_at": "={{ $json.created_at }}",
+            "is_major_child": "={{ $json.is_major_child }}",
+            "parent_mi_number": "={{ $json.parent_mi_number }}",
+            "notes": "={{ $json.notes }}"
+          },
+          "matchingColumns": [
+            "number"
+          ],
+          "schema": [
+            {
+              "id": "number",
+              "displayName": "number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "server_name",
+              "displayName": "server_name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "assignment_group",
+              "displayName": "assignment_group",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "short_desc",
+              "displayName": "short_desc",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "is_major_child",
+              "displayName": "is_major_child",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "parent_mi_number",
+              "displayName": "parent_mi_number",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f84d0380-34de-4423-a002-c165985dd0fe",
+      "name": "Append Incident to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -4160,
+        400
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uA0gluDjiComYe9i",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Current incident\nconst currentIncident = $node[\"Prepare New Incident\"].json;\nconst server = currentIncident.server_name;\n\n// All incidents from sheet (keep full items so we have rowNumber)\nconst allItems = $items(\"Get All Incidents\");\n\n// Filter by same server, active state\nconst relatedItems = allItems.filter(item => {\n  const row = item.json;\n  if (!row.server_name) return false;\n  if (row.server_name !== server) return false;\n  if (row.state === 'Resolved' || row.state === 'Closed') return false;\n  return true;\n});\n\n// Build arrays with rowNumber included\n// (Check in \"Get All Incidents\" output if it's `rowNumber` or `rowIndex` and adjust below)\nconst relatedIncidents = relatedItems.map(item => ({\n  ...item.json,\n  rowNumber: item.json.rowNumber || item.json.rowIndex,   // <-- adjust if needed\n}));\n\nconst relatedCount = relatedIncidents.length;\nconst threshold = 3;\nconst patternDetected = relatedCount >= threshold;\n\nreturn [\n  {\n    json: {\n      server_name: server,\n      relatedCount,\n      patternDetected,\n      relatedIncidentNumbers: relatedIncidents.map(r => r.number),\n      relatedIncidents,           // full rows + rowNumber\n      currentIncident\n    }\n  }\n];\n"
+      },
+      "id": "e706d331-295e-4057-a606-2ddd89e05cfb",
+      "name": "Analyze Incident Patterns",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.patternDetected }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fa760360-bf3e-49ca-bbfe-e2df775c9057",
+      "name": "Check Threshold Exceeded",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -3840,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Data from Analyze Incident Patterns\nconst analyze = $node[\"Analyze Incident Patterns\"].json;\nconst server = analyze.server_name;\n\n// incidents found earlier (old ones)\nlet relatedIncidents = analyze.relatedIncidents || [];\nlet relatedNumbers = analyze.relatedIncidentNumbers || [];\n\n// 2. Also include the *current* incident that was just appended to the sheet\nconst current = $node[\"Append Incident to Sheet\"].json;\n\nif (current && current.server_name === server) {\n  if (!relatedNumbers.includes(current.number)) {\n    relatedNumbers.push(current.number);\n\n    // push a simple object for summary (use the column names from your sheet)\n    relatedIncidents.push({\n      number: current.number,\n      server_name: current.server_name,\n      // header in your sheet is \"ssignment_grou\" (missing 'a'), so use both just in case\n      assignment_group: current.assignment_group || current.ssignment_grou || \"\",\n      short_desc: current.short_desc || \"\",\n    });\n  }\n}\n\n// 3. All existing majors from \"Get Existing Majors\"\nconst majors = $items(\"Get Existing Majors\").map(i => i.json);\n\n// find an open MI for this server\nconst openMajors = majors.filter(m =>\n  m.server_name === server &&\n  m.state !== 'Resolved' &&\n  m.state !== 'Closed'\n);\n\nlet miNumber;\nlet existingChildList = [];\n\n// 4. Reuse existing MI if found, otherwise create new\nif (openMajors.length > 0) {\n  const m = openMajors[0];   // assume max 1 open MI per server\n  miNumber = m.mi_number;\n  existingChildList = (m.child_list || \"\")\n    .split(',')\n    .map(s => s.trim())\n    .filter(Boolean);\n} else {\n  const ts = new Date().toISOString().replace(/[-:T.Z]/g, '');\n  miNumber = `MI${ts.slice(-8)}`;\n}\n\n// 5. Merge old + new child incident numbers (dedupe)\nconst allChildNumbers = Array.from(new Set([...existingChildList, ...relatedNumbers]));\n\n// 6. Build summary from *all* incidents (old + current)\nconst lines = relatedIncidents.map(inc => {\n  const ag = inc.assignment_group || inc.ssignment_grou || \"\";\n  return `- ${inc.number} (${ag}): ${inc.short_desc}`;\n});\n\nconst summary = `\nMAJOR INCIDENT ${miNumber} for server ${server}\n\nDetected ${allChildNumbers.length} active incidents:\n\n${lines.join('\\n')}\n`.trim();\n\n// 7. Return for Append/Update Major Incident node\nreturn [\n  {\n    json: {\n      mi_number: miNumber,\n      server_name: server,\n      summary,\n      child_list: allChildNumbers.join(', '),\n      // keep for child updates if you use them later\n      relatedIncidents\n    }\n  }\n];\n"
+      },
+      "id": "1d1b0f4f-9fdc-4eb0-b2b9-bd5c33301d23",
+      "name": "Generate Major Incident",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3552,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Workflow Configuration').first().json.sheetId }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "MajorIncidents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mi_number": "={{ $json.mi_number }}",
+            "server_name": "={{ $json.server_name }}",
+            "summary": "={{ $json.summary }}",
+            "child_list": "={{ $json.child_list }}",
+            "state": "=\"In Progress\"",
+            "created_at": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [
+            "mi_number"
+          ],
+          "schema": [
+            {
+              "id": "mi_number",
+              "displayName": "mi_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "server_name",
+              "displayName": "server_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "child_list",
+              "displayName": "child_list",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3f79043e-c895-45da-a748-5eb802771558",
+      "name": "Append Major Incident",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3376,
+        128
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uA0gluDjiComYe9i",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "=1ae8xVOhnb4obrk--GBQiLmJs9VPJP2j4re_uvjBBJl4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Incidents"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "number": "={{ $json.number }}",
+            "is_major_child": "={{ $json.is_major_child }}",
+            "parent_mi_number": "={{ $json.parent_mi_number }}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "number"
+          ],
+          "schema": [
+            {
+              "id": "number",
+              "displayName": "number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "server_name",
+              "displayName": "server_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "assignment_group",
+              "displayName": "assignment_group",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "short_desc",
+              "displayName": "short_desc",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "is_major_child",
+              "displayName": "is_major_child",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "parent_mi_number",
+              "displayName": "parent_mi_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "acbc3435-9653-4db4-9602-bb7934fb60e4",
+      "name": "Update Child Incidents",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3040,
+        160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uA0gluDjiComYe9i",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "f27f2a0c-7788-4999-a45f-bd8d430b4688",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -3184,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=You are a ServiceNow Major Incident Manager bot. Summarize the following list of incidents into 3–4 lines suitable for a Major Incident description. Focus on common symptom, impact and affected server. "
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "eaad4b88-c16d-40a3-845a-80a68ea3f141",
+      "name": "Generate AI Response",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2,
+      "position": [
+        -3632,
+        608
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "LIWKZEhDYRf5QiJO",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "incident_number",
+              "value": "={{ $json.number }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "server_name",
+              "value": "={{ $json.server_name }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "assignment_group",
+              "value": "={{ $json.assignment_group }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "short_desc",
+              "value": "={{ $json.short_desc }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "major_incident_created",
+              "value": "={{ $json.mi_number ? true : false }}",
+              "type": "boolean"
+            },
+            {
+              "id": "id-6",
+              "name": "major_incident_number",
+              "value": "={{ $json.mi_number || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a5900754-228a-4b4e-877c-1d6bdae9bec8",
+      "name": "Prepare Response Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3120,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Major Incident number (from Generate Major Incident node)\nconst miNumber = $node[\"Generate Major Incident\"].json.mi_number;\n\n// Related incidents from Analyze Incident Patterns (older incidents, with rowNumber)\nconst related = $node[\"Analyze Incident Patterns\"].json.relatedIncidents || [];\n\n// The *current* incident row as it was appended to the sheet\n// (this node must run AFTER \"Append Incident to Sheet\")\nconst currentRow = $node[\"Append Incident to Sheet\"].json;\n\n// Build a combined list: related + current (if not already included)\nconst allForUpdate = [...related];\n\n// Add current incident if it's not already in the list\nif (currentRow && currentRow.number) {\n  const exists = allForUpdate.some(inc => inc.number === currentRow.number);\n  if (!exists) {\n    allForUpdate.push({\n      ...currentRow,\n      rowNumber: currentRow.rowNumber || currentRow.rowIndex,  // adjust if needed\n    });\n  }\n}\n\n// Return one item per incident to update\nreturn allForUpdate.map(inc => ({\n  json: {\n    number: inc.number,\n    rowNumber: inc.rowNumber,        // optional if you're matching on number\n    is_major_child: \"Yes\",\n    parent_mi_number: miNumber,\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3216,
+        96
+      ],
+      "id": "d1413f82-c0a8-4ef2-b117-1d14e6ff89de",
+      "name": "Prepare Child Updates"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ae8xVOhnb4obrk--GBQiLmJs9VPJP2j4re_uvjBBJl4",
+          "mode": "list",
+          "cachedResultName": "SERVICE NOW",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ae8xVOhnb4obrk--GBQiLmJs9VPJP2j4re_uvjBBJl4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 398574994,
+          "mode": "list",
+          "cachedResultName": "MajorIncidents",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ae8xVOhnb4obrk--GBQiLmJs9VPJP2j4re_uvjBBJl4/edit#gid=398574994"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -3712,
+        128
+      ],
+      "id": "de339f08-96c1-4eb3-9618-d6e4324299c8",
+      "name": "Get Existing Majors",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uA0gluDjiComYe9i",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receive Incident": {
+      "main": [
+        [
+          {
+            "node": "Workflow Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Configuration": {
+      "main": [
+        [
+          {
+            "node": "Get All Incidents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Incidents": {
+      "main": [
+        [
+          {
+            "node": "Generate Incident Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Incident Number": {
+      "main": [
+        [
+          {
+            "node": "Prepare New Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare New Incident": {
+      "main": [
+        [
+          {
+            "node": "Append Incident to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Incident to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Analyze Incident Patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Incident Patterns": {
+      "main": [
+        [
+          {
+            "node": "Check Threshold Exceeded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Threshold Exceeded": {
+      "main": [
+        [
+          {
+            "node": "Get Existing Majors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Response Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Major Incident": {
+      "main": [
+        [
+          {
+            "node": "Append Major Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Major Incident": {
+      "main": [
+        [
+          {
+            "node": "Prepare Child Updates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Child Incidents": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response Data": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Response": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Child Updates": {
+      "main": [
+        [
+          {
+            "node": "Update Child Incidents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Existing Majors": {
+      "main": [
+        [
+          {
+            "node": "Generate Major Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "42f9b346-8f3c-4d5a-bb19-b7cf72e56b09",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "af6b385f696733129282e16fcaec0214cbedd38615c03b3a0bb01ec186419fef"
+  },
+  "id": "9uzxHiBia292Q5bR",
+  "tags": []
+}
